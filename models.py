@@ -43,7 +43,7 @@ class CoreModel:
         results = await db.execute(query)
         #print(results)
         #(result,) = results.all()
-        return results.all()
+        return results.scalars().all()
 
     @classmethod
     async def get(cls, id):
@@ -71,11 +71,12 @@ class CoreModel:
     async def filter_by_name(cls, name):
         query = select(cls).where(cls.name==name)
         results = await db.execute(query)
-        _result = results.fetchone()
-        if _result is None:
-            raise HTTPException(status_code=404, detail="Fleet not found")
-        (result,) = _result
-        return result
+        _result = results.scalars().all()
+        print(_result)
+        if _result == []:
+            length = len(str(cls))
+            raise HTTPException(status_code=404, detail=f"{str(cls)[15:(length-2)]} not found")
+        return _result
 
 
 class Fleet(Base, CoreModel):
