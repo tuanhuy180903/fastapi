@@ -1,7 +1,6 @@
 #DATABASE_URL = "sqlite:///./fastapi.db"
 #DATABASE_URL = "postgresql://postgres:password@localhost/fastapidb"
 
-from click import echo
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from config import Config

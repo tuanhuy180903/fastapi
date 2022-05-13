@@ -4,10 +4,9 @@ from sqlalchemy import update as sqlalchemy_update
 from sqlalchemy import delete as sqlalchemy_delete
 
 from sqlalchemy.future import select
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 
 from database import db, Base
-from uuid import uuid4
 
 class CoreModel:
     @classmethod
@@ -41,8 +40,6 @@ class CoreModel:
     async def get_all(cls):
         query = select(cls)
         results = await db.execute(query)
-        #print(results)
-        #(result,) = results.all()
         return results.scalars().all()
 
     @classmethod
@@ -51,9 +48,9 @@ class CoreModel:
         results = await db.execute(query)
         _result = results.fetchone()
         if _result is None:
-            raise HTTPException(status_code=404, detail="Fleet not found")
+            name_cls = str(cls)
+            raise HTTPException(status_code=404, detail=f"{name_cls[15:(len(name_cls)-2)]} not found")
         (result,) = _result
-        print(result)
         return result
 
     @classmethod
@@ -72,10 +69,10 @@ class CoreModel:
         query = select(cls).where(cls.name==name)
         results = await db.execute(query)
         _result = results.scalars().all()
-        print(_result)
+        #print(_result)
         if _result == []:
-            length = len(str(cls))
-            raise HTTPException(status_code=404, detail=f"{str(cls)[15:(length-2)]} not found")
+            name_cls = str(cls)
+            raise HTTPException(status_code=404, detail=f"{name_cls[15:(len(name_cls)-2)]} not found")
         return _result
 
 
@@ -84,18 +81,21 @@ class Fleet(Base, CoreModel):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
-    vehicles = relationship("Vehicle", back_populates="owner")
-
-   #__mapper_args__ = {"eager_defaults": True}
+    #vehicles = relationship("Vehicle", cascade="delete-orphan", backref="vehicles")
+    vehicle = relationship("Vehicle", back_populates="owner", cascade="delete", passive_deletes=True)
+    __mapper_args__ = {"eager_defaults": True}
 
 class Vehicle(Base, CoreModel):
     __tablename__ = "vehicles"
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    owner_id = Column(Integer, ForeignKey("fleets.id"))
-    owner = relationship("Fleet", back_populates="vehicles")
-    route_detail = relationship("RouteDetail", back_populates="vehicle")
+    owner_id = Column(Integer, ForeignKey("fleets.id", ondelete="CASCADE"))
+    #owner = relationship("Fleet", backref=backref("fleets", cascade="delete"))
+    owner = relationship("Fleet", back_populates="vehicle")
+    __mapper_args__ = {"eager_defaults": True}
+
+    route_detail = relationship("RouteDetail", back_populates="vehicle", cascade="all, delete-orphan")
 
     @classmethod
     async def filter_by_owner_id(cls, owner_id):
@@ -108,14 +108,14 @@ class Driver(Base, CoreModel):
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    route_detail = relationship("RouteDetail", back_populates="driver")
+    route_detail = relationship("RouteDetail", back_populates="driver", cascade="all, delete-orphan")
 
 class Route(Base, CoreModel):
     __tablename__ = "routes"
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    route_detail = relationship("RouteDetail", back_populates="route")
+    route_detail = relationship("RouteDetail", back_populates="route", cascade="all, delete-orphan")
 
 class RouteDetail(Base, CoreModel):
     __tablename__ = "routedetail"
@@ -127,3 +127,14 @@ class RouteDetail(Base, CoreModel):
     route = relationship("Route", back_populates="route_detail")
     vehicle = relationship("Vehicle", back_populates="route_detail")
     driver = relationship("Driver", back_populates="route_detail")
+
+    @classmethod
+    async def get_id(cls, id):
+        query = select(cls).where(cls.route_id==id)
+        results = await db.execute(query)
+        _result = results.fetchone()
+        if _result is None:
+            name_cls = str(cls)
+            raise HTTPException(status_code=404, detail=f"{name_cls[15:(len(name_cls)-2)]} not found")
+        (result,) = _result
+        return result
