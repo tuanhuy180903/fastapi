@@ -1,3 +1,4 @@
+import uvicorn
 from database import db
 from fastapi import FastAPI
 
@@ -22,6 +23,9 @@ api_routes, api_route, api_routedetails, api_routedetail]
 
 for api in apis:
     app.include_router(api)
+
+if __name__ == "__main__":
+    uvicorn.run(app=app)
 
 
 
