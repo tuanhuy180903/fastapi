@@ -138,3 +138,14 @@ class RouteDetail(Base, CoreModel):
             raise HTTPException(status_code=404, detail=f"{name_cls[15:(len(name_cls)-2)]} not found")
         (result,) = _result
         return result
+
+    @classmethod
+    async def delete_id(cls,id):
+        query = sqlalchemy_delete(cls).where(cls.route_id==id)
+        await db.execute(query)
+        try:
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            raise
+        return True

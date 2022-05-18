@@ -24,7 +24,7 @@ async def get_fleet(id:int):
     return schemas.Fleet.from_orm(fleet)
 
 @api_fleet.put("/{id}", response_model=schemas.Fleet)
-async def update_fleet(id:int, fleet: schemas.Fleet):
+async def update_fleet(id:int, fleet: schemas.FleetBase):
     await Fleet.get(id)
     fleet = await Fleet.update(id, **fleet.dict())
     return schemas.Fleet.from_orm(fleet)
@@ -48,6 +48,15 @@ api_vehicle = APIRouter(prefix="/vehicle")
 async def create_vehicle(vehicle: schemas.Vehicle):
     vehicle = await Vehicle.create(**vehicle.dict())
     return schemas.Vehicle.from_orm(vehicle)
+
+@api_vehicle.put("/{id}", response_model=schemas.Vehicle)
+async def update_vehicle(id:int, vehicle: schemas.VehicleBase):
+    vehicle = await Vehicle.update(id, **vehicle.dict())
+    return schemas.Vehicle.from_orm(vehicle)
+
+@api_vehicle.delete("/{id}", response_model=bool)
+async def delete_vehicle(id:int):
+    return await Vehicle.delete(id)
 
 """ @api_vehicle.get("/",response_model=List[schemas.Vehicle], summary="Get vehicle by fleet's ID")
 async def get_vehicle_by_owner_id(id:int):
@@ -95,7 +104,7 @@ async def get_driver(id:int):
     return schemas.Driver.from_orm(driver)
 
 @api_driver.put("/{id}", response_model=schemas.Driver)
-async def update_driver(id:int, driver: schemas.Driver):
+async def update_driver(id:int, driver: schemas.DriverBase):
     driver = await Driver.update(id, **driver.dict())
     return schemas.Driver.from_orm(driver)
 
@@ -179,7 +188,7 @@ async def update_routedetail(id:int, routedetail: schemas.RouteDetail):
 
 @api_routedetail.delete("/{id}", response_model=bool)
 async def delete_routedetail(id:int):
-    return await RouteDetail.delete(id)
+    return await RouteDetail.delete_id(id)
 
 api_routedetails = APIRouter(prefix="/routedetails")
 @api_routedetails.get("/",response_model=List[schemas.RouteDetail],summary="Get all RouteDetails")

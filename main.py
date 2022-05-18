@@ -14,7 +14,7 @@ async def shutdown():
     await db.close()
 
 @app.get("/")
-async def home():
+def home():
     return {"Data": "Hello!"}
 
 from views import *

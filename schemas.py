@@ -1,24 +1,30 @@
 from typing import Optional
 from pydantic import BaseModel
 
-class Fleet(BaseModel):
-    id: int
+class FleetBase(BaseModel):
     name: str
+
+class Fleet(FleetBase):
+    id: int
 
     class Config:
         orm_mode = True
 
-class Vehicle(BaseModel):
-    id: int
+class VehicleBase(BaseModel):
     name: str
     owner_id: int
 
+class Vehicle(VehicleBase):
+    id: int
+
     class Config:
         orm_mode = True
 
-class Driver(BaseModel):
-    id: int
+class DriverBase(BaseModel):
     name: str
+
+class Driver(DriverBase):
+    id: int
 
     class Config:
         orm_mode = True
