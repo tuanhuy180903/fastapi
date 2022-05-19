@@ -29,19 +29,19 @@ class Driver(DriverBase):
     class Config:
         orm_mode = True
 
-class RouteDetail(BaseModel):
-    route_id: int
-    vehicle_id: int
-    driver_id: int
+class RouteBase(BaseModel):
+    name: str
+
+class Route(RouteBase):
+    id: int
 
     class Config:
         orm_mode = True
 
-
-class Route(BaseModel):
-    id: int
-    name: str
-    routedetail: Optional[RouteDetail] = None
+class RouteDetail(BaseModel):
+    route_id: int
+    vehicle_id: int
+    driver_id: int
 
     class Config:
         orm_mode = True

@@ -7,18 +7,19 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import relationship, backref
 
 from database import db, Base
+from uuid import uuid4
 
 class CoreModel:
     @classmethod
     async def create(cls, **kwargs):
-        db.add(cls(**kwargs))
-        #await db.commit()
+        var = cls(**kwargs)
+        db.add(var)
         try:
             await db.commit()
         except Exception:
             await db.rollback()
             raise
-        return cls(**kwargs)
+        return var
 
     @classmethod
     async def update(cls, id, **kwargs):
@@ -69,7 +70,7 @@ class CoreModel:
         query = select(cls).where(cls.name==name)
         results = await db.execute(query)
         _result = results.scalars().all()
-        #print(_result)
+        print(_result)
         if _result == []:
             name_cls = str(cls)
             raise HTTPException(status_code=404, detail=f"{name_cls[15:(len(name_cls)-2)]} not found")
@@ -80,10 +81,17 @@ class Fleet(Base, CoreModel):
     __tablename__ = "fleets"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String)
+    name = Column(String, unique=True)
     #vehicles = relationship("Vehicle", cascade="delete-orphan", backref="vehicles")
     vehicle = relationship("Vehicle", back_populates="owner", cascade="delete", passive_deletes=True)
     __mapper_args__ = {"eager_defaults": True}
+
+    @classmethod
+    async def get_by_name(cls, name):
+        query = select(cls).where(cls.name==name)
+        results = await db.execute(query)
+        _result = results.scalar()
+        return _result
 
 class Vehicle(Base, CoreModel):
     __tablename__ = "vehicles"
@@ -132,16 +140,14 @@ class RouteDetail(Base, CoreModel):
     async def get_id(cls, id):
         query = select(cls).where(cls.route_id==id)
         results = await db.execute(query)
-        _result = results.fetchone()
-        if _result is None:
-            name_cls = str(cls)
-            raise HTTPException(status_code=404, detail=f"{name_cls[15:(len(name_cls)-2)]} not found")
-        (result,) = _result
-        return result
+        _result = results.scalars().all()
+        if _result == []:
+            raise HTTPException(status_code=404, detail=f"Route not found")
+        return _result
 
     @classmethod
-    async def delete_id(cls,id):
-        query = sqlalchemy_delete(cls).where(cls.route_id==id)
+    async def delete_id(cls,route_id, vehicle_id, driver_id):
+        query = sqlalchemy_delete(cls).where(cls.route_id==route_id, cls.vehicle_id==vehicle_id, cls.driver_id==driver_id)
         await db.execute(query)
         try:
             await db.commit()
