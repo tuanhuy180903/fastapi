@@ -20,7 +20,7 @@ async def get_fleet(id:int):
     return schemas.Fleet.from_orm(fleet)
 
 @api_fleet.post("/",response_model=schemas.Fleet)
-async def create_fleet(fleet: schemas.FleetBase):
+async def create_fleet(fleet: schemas.Fleet):
     _dict = fleet.dict()
     _fleet = await Fleet.get_by_name(_dict["name"])
     if _fleet:
@@ -51,7 +51,10 @@ async def get_fleets():
 api_vehicle = APIRouter(prefix="/vehicle")
 
 @api_vehicle.post("/",response_model=schemas.Vehicle)
-async def create_vehicle(vehicle: schemas.VehicleBase):
+async def create_vehicle(vehicle: schemas.Vehicle):
+    result = await Fleet.get(vehicle.dict()['owner_id'])
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"Fleet not found")
     vehicle = await Vehicle.create(**vehicle.dict())
     return vehicle
 
@@ -82,20 +85,21 @@ async def get_vehicles():
     return vehicle
 
 @api_vehicle.get("/", response_model=List[schemas.Vehicle])
-async def get_vehicle(id: Optional[int]=None, name:Optional[str]=None):
-    if id:
-        vehicle = await Vehicle.filter_by_owner_id(id)
+async def get_vehicle(owner_id: Optional[int]=None, name:Optional[str]=None):
+    if owner_id:
+        vehicle = await Vehicle.filter_by_owner_id(owner_id,name)
         return vehicle
     if name:
         vehicle = await Vehicle.filter_by_name(name)
         return vehicle
+    return []
 
 '''Driver'''
 
 api_driver = APIRouter(prefix="/driver")
 
 @api_driver.post("/",response_model=schemas.Driver)
-async def create_driver(driver: schemas.DriverBase):
+async def create_driver(driver: schemas.Driver):
     driver = await Driver.create(**driver.dict())
     return driver
 
@@ -129,7 +133,7 @@ async def get_drivers():
 api_route = APIRouter(prefix="/route")
 
 @api_route.post("/",response_model=schemas.Route)
-async def create_route(route: schemas.RouteBase):
+async def create_route(route: schemas.Route):
     route = await Route.create(**route.dict())
     return route
 
@@ -150,14 +154,6 @@ async def delete_route(id:int):
 @api_route.get("/", response_model=List[schemas.Route])
 async def get_route_by_name(name:str):
     routes = await Route.filter_by_name(name)
-    """ for route in routes:
-        _id = schemas.Route.from_orm(route).id
-        routedetail = await RouteDetail.get_id(_id)
-        print(routedetail)
-    print(routes)
-    #routes.append(routedetail)
-    #print(route.keys()) """
-    #return schemas.Route.from_orm(routes)
     return routes
 
 api_routes = APIRouter(prefix="/routes")
@@ -171,9 +167,18 @@ async def get_routes():
 api_routedetail = APIRouter(prefix="/routedetail")
 
 @api_routedetail.get("/{id}", response_model=List[schemas.RouteDetail])
-async def get_route_detail(route_id:int):
-    routedetail = await RouteDetail.get_id(route_id)
+async def get_route_detail(id:int):
+    routedetail = await RouteDetail.get_id(id)
+    if routedetail == []:
+        raise HTTPException(status_code=404, detail="Route not found")
     return routedetail
+
+@api_routedetail.get("/", response_model=List[schemas.RouteDetail])
+async def get_route_detail_by_name(route_name: Optional[str]=None, vehicle_name: Optional[str]=None, driver_name: Optional[str]=None):
+    if not (route_name or vehicle_name or driver_name):
+        return []
+    result = await RouteDetail.get_by_name(route_name, vehicle_name, driver_name)
+    return result
 
 @api_routedetail.post("/",response_model=schemas.RouteDetail)
 async def create_route_detail(routedetail: schemas.RouteDetail):
@@ -189,3 +194,27 @@ api_routedetails = APIRouter(prefix="/routedetails")
 async def get_routedetails():
     routedetail = await RouteDetail.get_all()
     return routedetail
+
+""" @api_routedetail.get("/join", response_model=List[schemas.RouteDetail])
+async def get_route_detail_by_name_temp(route_name: Optional[str]=None, vehicle_name: Optional[str]=None, driver_name: Optional[str]=None):
+    if not (route_name or vehicle_name or driver_name):
+        return []
+
+    routedetail = []
+
+    if route_name:
+        routes = await Route.get_id_by_name(route_name)
+        for route in routes:
+            routedetail.extend(await RouteDetail.get_id(route))
+        return routedetail
+
+    if vehicle_name:
+        vehicles = await Vehicle.get_id_by_name(vehicle_name)
+        for vehicle in vehicles:
+            routedetail.extend(await RouteDetail.get_vehicle_id(vehicle))
+        return routedetail
+
+    drivers = await Driver.get_id_by_name(driver_name)
+    for driver in drivers:
+        routedetail.extend(await RouteDetail.get_driver_id(driver))
+    return routedetail """

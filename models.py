@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, join
 from sqlalchemy import update as sqlalchemy_update
 from sqlalchemy import delete as sqlalchemy_delete
 
@@ -7,7 +7,6 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import relationship, backref
 
 from database import db, Base
-from uuid import uuid4
 
 class CoreModel:
     @classmethod
@@ -106,10 +105,25 @@ class Vehicle(Base, CoreModel):
     route_detail = relationship("RouteDetail", back_populates="vehicle", cascade="all, delete-orphan")
 
     @classmethod
-    async def filter_by_owner_id(cls, owner_id):
-        query = select(cls).where(cls.owner_id==owner_id)
+    async def filter_by_owner_id(cls, owner_id, name):
+        if name:
+            query = select(cls).where(cls.owner_id==owner_id, cls.name==name)
+        else:
+            query = select(cls).where(cls.owner_id==owner_id)
+        result = await db.execute(query)
+        results = result.scalars().all()
+        if results == []:
+            raise HTTPException(status_code=404, detail="Fleet or vehicle not found")
+        return results
+
+    @classmethod
+    async def filter_by_vehicle_name(cls, name):
+        query = select(cls).where(cls.name==name)
         results = await db.execute(query)
-        return results.scalars().all()
+        _result = results.scalars().all()
+        if _result == []:
+            raise HTTPException(status_code=404, detail="Vehicle not found")
+        return _result
 
 class Driver(Base, CoreModel):
     __tablename__ = "drivers"
@@ -118,12 +132,41 @@ class Driver(Base, CoreModel):
     name = Column(String)
     route_detail = relationship("RouteDetail", back_populates="driver", cascade="all, delete-orphan")
 
+    @classmethod
+    async def get_id_by_name(cls, name):
+        query = select(cls.id).where(cls.name==name)
+        results = await db.execute(query)
+        _result = results.scalars().all()
+        print(_result)
+        if _result == []:
+            raise HTTPException(status_code=404, detail="Driver not found")
+        return _result
+
 class Route(Base, CoreModel):
     __tablename__ = "routes"
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
     route_detail = relationship("RouteDetail", back_populates="route", cascade="all, delete-orphan")
+
+    @classmethod
+    async def filter_by_route_name(cls, name):
+        query = select(cls).where(cls.name==name)
+        results = await db.execute(query)
+        _result = results.scalars().all()
+        if _result == []:
+            raise HTTPException(status_code=404, detail="Route not found")
+        return _result
+    
+    @classmethod
+    async def get_id_by_name(cls, name):
+        query = select(cls.id).where(cls.name==name)
+        results = await db.execute(query)
+        _result = results.scalars().all()
+        print(_result)
+        if _result == []:
+            raise HTTPException(status_code=404, detail="Driver not found")
+        return _result
 
 class RouteDetail(Base, CoreModel):
     __tablename__ = "routedetail"
@@ -141,10 +184,74 @@ class RouteDetail(Base, CoreModel):
         query = select(cls).where(cls.route_id==id)
         results = await db.execute(query)
         _result = results.scalars().all()
-        if _result == []:
-            raise HTTPException(status_code=404, detail=f"Route not found")
+        return _result
+    
+    @classmethod
+    async def get_driver_id(cls, id):
+        query = select(cls).where(cls.driver_id==id)
+        results = await db.execute(query)
+        _result = results.scalars().all()
+        """ if _result == []:
+            raise HTTPException(status_code=404, detail="Route not found") """
+        return _result
+    
+    @classmethod
+    async def get_vehicle_id(cls, id):
+        query = select(cls).where(cls.vehicle_id==id)
+        results = await db.execute(query)
+        _result = results.scalars().all()
+        """ if _result == []:
+            raise HTTPException(status_code=404, detail="Route not found") """
         return _result
 
+    @classmethod
+    async def join_route(cls, route_name,vehicle_name, driver_name):
+        if not (route_name or driver_name or vehicle_name):
+            return []
+
+        _join = join(cls, Route, cls.route_id==Route.id).join(Vehicle, cls.vehicle_id==Vehicle.id).join(Driver, cls.driver_id==Driver.id)
+        
+        if route_name:
+            if vehicle_name:
+                if driver_name:
+                    query = select(cls).select_from(_join).where(Route.name==route_name,Vehicle.name==vehicle_name, Driver.name==driver_name)
+                else:
+                    query = select(cls).select_from(_join).where(Route.name==route_name,Vehicle.name==vehicle_name)
+            else:
+                if driver_name:
+                    query = select(cls).select_from(_join).where(Route.name==route_name,Driver.name==driver_name)
+                else:
+                    query = select(cls).select_from(_join).where(Route.name==route_name)
+        elif vehicle_name:
+            if driver_name:
+                query = select(cls).select_from(_join).where(Driver.name==driver_name,Vehicle.name==vehicle_name)
+            else:
+                query = select(cls).select_from(_join).where(Vehicle.name==vehicle_name)
+        else:
+            query = select(cls).select_from(_join).where(Driver.name==driver_name)
+
+        results = await db.execute(query)
+        print(results)
+        return results.scalars().all()
+
+    @classmethod
+    async def get_by_name(cls, route_name, vehicle_name, driver_name):
+
+        _join = join(cls, Route, cls.route_id==Route.id
+        ).join(Vehicle, cls.vehicle_id==Vehicle.id
+        ).join(Driver, cls.driver_id==Driver.id)
+    
+        query = select(cls).select_from(_join)        
+        if route_name:
+            query = query.filter(Route.name==route_name)
+        if vehicle_name:
+            query = query.filter(Vehicle.name==vehicle_name)
+        if driver_name:
+            query = query.filter(Driver.name==driver_name)
+
+        results = await db.execute(query)
+        return results.scalars().all()
+        
     @classmethod
     async def delete_id(cls,route_id, vehicle_id, driver_id):
         query = sqlalchemy_delete(cls).where(cls.route_id==route_id, cls.vehicle_id==vehicle_id, cls.driver_id==driver_id)
