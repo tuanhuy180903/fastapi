@@ -1,15 +1,14 @@
 import pytest
 import json
-
-from main import app
 from httpx import AsyncClient
 
 import sys, os
 sys.path.append(os.path.abspath(os.path.join('..', 'fastapi')))
 print(sys.path)
 
-pytestmark = pytest.mark.anyio
+from main import app
 
+pytestmark = pytest.mark.anyio
 base_url = "http://127.0.0.1:8000"
 
 async def test_root():
@@ -24,7 +23,7 @@ async def test_create_fleet(event_loop):
     test_data = {"id": 3, "name": "eee"}
     async with AsyncClient(app=app, base_url=base_url) as ac:
         response = await ac.post("/fleet/", data=json.dumps(test_data),)
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert response.json() == test_data
 
 async def test_get_fleet(event_loop):
@@ -49,7 +48,7 @@ async def test_delete_fleet(event_loop):
     async with AsyncClient(app=app, base_url=base_url) as ac:
         response = await ac.delete("/fleet/3")
     assert response.status_code == 200
-    assert response.json() == True
+    assert response.json() == {"detail": "Delete succesfully"}
 
 async def test_get_fleet_by_name(event_loop):
     test_data = {"id": 4, "name": "aaa"}
@@ -72,7 +71,7 @@ async def test_create_vehicle(event_loop):
     test_data = {"name": "eee", "owner_id": 6, "id": 3}
     async with AsyncClient(app=app, base_url=base_url) as ac:
         response = await ac.post("/vehicle/", data=json.dumps(test_data),)
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert response.json() == test_data
 
 async def test_update_vehicle(event_loop):
@@ -86,7 +85,7 @@ async def test_delete_vehicle(event_loop):
     async with AsyncClient(app=app, base_url=base_url) as ac:
         response = await ac.delete("/vehicle/3")
     assert response.status_code == 200
-    assert response.json() == True
+    assert response.json() == {"detail": "Delete succesfully"}
 
 async def test_get_vehicle_by_name(event_loop):
     test_data = [
@@ -102,7 +101,7 @@ async def test_get_vehicle_by_fleet_id(event_loop):
     async with AsyncClient(app=app, base_url=base_url) as ac:
         response = await ac.get("/vehicle/?owner_id=2")
     assert response.status_code == 404
-    assert response.json() == {"detail": "Fleet or vehicle not found"}
+    assert response.json() == {"detail": "Vehicle not found"}
 
     test_data = [
         {"name": "aaa", "owner_id": 1, "id": 2},
@@ -150,7 +149,7 @@ async def test_create_driver(event_loop):
     test_data = {"id": 5, "name": "zzz"}
     async with AsyncClient(app=app, base_url=base_url) as ac:
         response = await ac.post("/driver/", data=json.dumps(test_data),)
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert response.json() == test_data
 
 async def test_update_driver(event_loop):
@@ -164,7 +163,7 @@ async def test_delete_driver(event_loop):
     async with AsyncClient(app=app, base_url=base_url) as ac:
         response = await ac.delete("/driver/5")
     assert response.status_code == 200
-    assert response.json() == True
+    assert response.json() == {"detail": "Delete succesfully"}
 
 async def test_get_driver_by_name(event_loop):
     test_data = [{"name": "qqq", "id": 1},{"name": "qqq", "id": 4}]
@@ -196,11 +195,18 @@ async def test_get_route(event_loop):
     assert response.status_code == 200
     assert response.json() == {"id":4, "name":"ccc"}
 
+async def test_get_route_by_name(event_loop):
+    test_data = [{"name": "eee", "id": 3}]
+    async with AsyncClient(app=app, base_url=base_url) as ac:
+        response = await ac.get("/route/?name=eee")
+    assert response.status_code == 200
+    assert response.json() == test_data
+
 async def test_create_route(event_loop):
     test_data = {"id": 5, "name": "zzz"}
     async with AsyncClient(app=app, base_url=base_url) as ac:
         response = await ac.post("/route/", data=json.dumps(test_data),)
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert response.json() == test_data
 
 async def test_update_route(event_loop):
@@ -214,14 +220,7 @@ async def test_delete_route(event_loop):
     async with AsyncClient(app=app, base_url=base_url) as ac:
         response = await ac.delete("/route/5")
     assert response.status_code == 200
-    assert response.json() == True
-
-async def test_get_route_by_name(event_loop):
-    test_data = [{"name": "eee", "id": 3}]
-    async with AsyncClient(app=app, base_url=base_url) as ac:
-        response = await ac.get("/route/?name=eee")
-    assert response.status_code == 200
-    assert response.json() == test_data
+    assert response.json() == {"detail": "Delete succesfully"}
 
 route_list = [{"name": "qqq", "id": 1},{"name": "eee", "id": 3},{"name": "ccc","id": 4}]
 
@@ -237,6 +236,9 @@ async def test_create_routedetail(event_loop):
     test_data = {"route_id": 4, "vehicle_id": 4, "driver_id": 3}
     async with AsyncClient(app=app, base_url=base_url) as ac:
         response = await ac.post("/routedetail/", data=json.dumps(test_data))
+    assert response.status_code == 201
+    assert response.json() == test_data
+
     
 async def test_get_routedetail(event_loop):
     async with AsyncClient(app=app, base_url=base_url) as ac:
@@ -251,13 +253,7 @@ async def test_get_routedetail(event_loop):
     assert response.status_code == 200
     assert response.json() == test_data
 
-async def test_delete_routedetail(event_loop):
-    async with AsyncClient(app=app, base_url=base_url) as ac:
-        response = await ac.delete("/routedetail/?route_id=4&vehicle_id=4&driver_id=3")
-    assert response.status_code == 200
-    assert response.json() == True
-
-async def test_get_route_by_name(event_loop):
+async def test_get_detail_by_name(event_loop):
     test_data_1 = [
         {"route_id": 1,"vehicle_id": 1,"driver_id": 1},
         {"route_id": 1,"vehicle_id": 2,"driver_id": 2}
@@ -286,6 +282,12 @@ async def test_get_route_by_name(event_loop):
         response = await ac.get("/routedetail/")
     assert response.status_code == 200
     assert response.json() == []
+
+async def test_delete_routedetail(event_loop):
+    async with AsyncClient(app=app, base_url=base_url) as ac:
+        response = await ac.delete("/routedetail/?route_id=4&vehicle_id=4&driver_id=3")
+    assert response.status_code == 200
+    assert response.json() == {"detail": "Delete succesfully"}
 
 route_list = [
     {"route_id": 1,"vehicle_id": 1,"driver_id": 1},

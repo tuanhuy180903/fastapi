@@ -105,25 +105,15 @@ class Vehicle(Base, CoreModel):
     route_detail = relationship("RouteDetail", back_populates="vehicle", cascade="all, delete-orphan")
 
     @classmethod
-    async def filter_by_owner_id(cls, owner_id, name):
+    async def filter_both(cls,id, name):
+        query = select(cls)
+        if id:
+            query = query.filter(cls.owner_id==id)
         if name:
-            query = select(cls).where(cls.owner_id==owner_id, cls.name==name)
-        else:
-            query = select(cls).where(cls.owner_id==owner_id)
-        result = await db.execute(query)
-        results = result.scalars().all()
-        if results == []:
-            raise HTTPException(status_code=404, detail="Fleet or vehicle not found")
-        return results
+            query = query.filter(cls.name==name)
 
-    @classmethod
-    async def filter_by_vehicle_name(cls, name):
-        query = select(cls).where(cls.name==name)
         results = await db.execute(query)
-        _result = results.scalars().all()
-        if _result == []:
-            raise HTTPException(status_code=404, detail="Vehicle not found")
-        return _result
+        return results.scalars().all()
 
 class Driver(Base, CoreModel):
     __tablename__ = "drivers"
@@ -148,15 +138,6 @@ class Route(Base, CoreModel):
     id = Column(Integer, primary_key=True)
     name = Column(String)
     route_detail = relationship("RouteDetail", back_populates="route", cascade="all, delete-orphan")
-
-    @classmethod
-    async def filter_by_route_name(cls, name):
-        query = select(cls).where(cls.name==name)
-        results = await db.execute(query)
-        _result = results.scalars().all()
-        if _result == []:
-            raise HTTPException(status_code=404, detail="Route not found")
-        return _result
     
     @classmethod
     async def get_id_by_name(cls, name):

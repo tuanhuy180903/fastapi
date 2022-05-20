@@ -19,7 +19,7 @@ async def get_fleet(id:int):
     fleet = await Fleet.get(id)
     return schemas.Fleet.from_orm(fleet)
 
-@api_fleet.post("/",response_model=schemas.Fleet)
+@api_fleet.post("/",response_model=schemas.Fleet, status_code=201)
 async def create_fleet(fleet: schemas.Fleet):
     _dict = fleet.dict()
     _fleet = await Fleet.get_by_name(_dict["name"])
@@ -35,10 +35,11 @@ async def update_fleet(id:int, fleet: schemas.FleetBase):
     fleet = await Fleet.update(id, **fleet.dict())
     return schemas.Fleet.from_orm(fleet)
 
-@api_fleet.delete("/{id}", response_model=bool)
+@api_fleet.delete("/{id}")
 async def delete_fleet(id:int):
     await Fleet.get(id)
-    return await Fleet.delete(id)
+    await Fleet.delete(id)
+    return {"detail": "Delete succesfully"}
 
 api_fleets = APIRouter(prefix="/fleets")
 @api_fleets.get("/",response_model=List[schemas.Fleet],summary="Get all fleets")
@@ -50,7 +51,23 @@ async def get_fleets():
 
 api_vehicle = APIRouter(prefix="/vehicle")
 
-@api_vehicle.post("/",response_model=schemas.Vehicle)
+
+@api_vehicle.get("/", response_model=List[schemas.Vehicle], summary="Get vehicles by name or by fleet's id")
+async def get_vehicle(owner_id: Optional[int]=None, name:Optional[str]=None):
+    if not (owner_id or name):
+        return []
+
+    result = await Vehicle.filter_both(owner_id, name)
+    if result == []:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    return result
+
+@api_vehicle.get("/{id}", response_model=schemas.Vehicle)
+async def get_vehicle_id(id:int):
+    vehicle = await Vehicle.get(id)
+    return schemas.Fleet.from_orm(vehicle)
+
+@api_vehicle.post("/",response_model=schemas.Vehicle,status_code=201)
 async def create_vehicle(vehicle: schemas.Vehicle):
     result = await Fleet.get(vehicle.dict()['owner_id'])
     if result is None:
@@ -63,19 +80,11 @@ async def update_vehicle(id:int, vehicle: schemas.VehicleBase):
     vehicle = await Vehicle.update(id, **vehicle.dict())
     return schemas.Vehicle.from_orm(vehicle)
 
-@api_vehicle.delete("/{id}", response_model=bool)
+@api_vehicle.delete("/{id}")
 async def delete_vehicle(id:int):
-    return await Vehicle.delete(id)
-
-""" @api_vehicle.get("/",response_model=List[schemas.Vehicle], summary="Get vehicle by fleet's ID")
-async def get_vehicle_by_owner_id(id:int):
-    vehicle = await Vehicle.filter_by_owner_id(id)
-    return vehicle
-
-@api_vehicle.get("/",response_model=List[schemas.Vehicle])
-async def get_vehicle_by_name(name:str):
-    vehicle = await Vehicle.filter_by_name(name)
-    return vehicle """
+    await Vehicle.get(id)
+    await Vehicle.delete(id)
+    return {"detail": "Delete succesfully"}
 
 api_vehicles = APIRouter(prefix="/vehicles")
 
@@ -84,21 +93,11 @@ async def get_vehicles():
     vehicle = await Vehicle.get_all()
     return vehicle
 
-@api_vehicle.get("/", response_model=List[schemas.Vehicle])
-async def get_vehicle(owner_id: Optional[int]=None, name:Optional[str]=None):
-    if owner_id:
-        vehicle = await Vehicle.filter_by_owner_id(owner_id,name)
-        return vehicle
-    if name:
-        vehicle = await Vehicle.filter_by_name(name)
-        return vehicle
-    return []
-
 '''Driver'''
 
 api_driver = APIRouter(prefix="/driver")
 
-@api_driver.post("/",response_model=schemas.Driver)
+@api_driver.post("/",response_model=schemas.Driver, status_code=201)
 async def create_driver(driver: schemas.Driver):
     driver = await Driver.create(**driver.dict())
     return driver
@@ -118,9 +117,11 @@ async def update_driver(id:int, driver: schemas.DriverBase):
     driver = await Driver.update(id, **driver.dict())
     return schemas.Driver.from_orm(driver)
 
-@api_driver.delete("/{id}", response_model=bool)
+@api_driver.delete("/{id}")
 async def delete_driver(id:int):
-    return await Driver.delete(id)
+    await Driver.get(id)
+    await Driver.delete(id)
+    return {"detail": "Delete succesfully"}
 
 api_drivers = APIRouter(prefix="/drivers")
 @api_drivers.get("/", response_model=List[schemas.Driver], summary="Get all drivers")
@@ -132,7 +133,7 @@ async def get_drivers():
 
 api_route = APIRouter(prefix="/route")
 
-@api_route.post("/",response_model=schemas.Route)
+@api_route.post("/",response_model=schemas.Route, status_code=201)
 async def create_route(route: schemas.Route):
     route = await Route.create(**route.dict())
     return route
@@ -147,9 +148,11 @@ async def update_route(id:int, route: schemas.RouteBase):
     route = await Route.update(id, **route.dict())
     return schemas.Route.from_orm(route)
 
-@api_route.delete("/{id}", response_model=bool)
+@api_route.delete("/{id}")
 async def delete_route(id:int):
-    return await Route.delete(id)
+    await Route.get(id)
+    await Route.delete(id)
+    return {"detail": "Delete succesfully"}
 
 @api_route.get("/", response_model=List[schemas.Route])
 async def get_route_by_name(name:str):
@@ -166,13 +169,6 @@ async def get_routes():
 
 api_routedetail = APIRouter(prefix="/routedetail")
 
-@api_routedetail.get("/{id}", response_model=List[schemas.RouteDetail])
-async def get_route_detail(id:int):
-    routedetail = await RouteDetail.get_id(id)
-    if routedetail == []:
-        raise HTTPException(status_code=404, detail="Route not found")
-    return routedetail
-
 @api_routedetail.get("/", response_model=List[schemas.RouteDetail])
 async def get_route_detail_by_name(route_name: Optional[str]=None, vehicle_name: Optional[str]=None, driver_name: Optional[str]=None):
     if not (route_name or vehicle_name or driver_name):
@@ -180,20 +176,32 @@ async def get_route_detail_by_name(route_name: Optional[str]=None, vehicle_name:
     result = await RouteDetail.get_by_name(route_name, vehicle_name, driver_name)
     return result
 
-@api_routedetail.post("/",response_model=schemas.RouteDetail)
+@api_routedetail.post("/",response_model=schemas.RouteDetail, status_code=201)
 async def create_route_detail(routedetail: schemas.RouteDetail):
     routedetail = await RouteDetail.create(**routedetail.dict())
     return schemas.RouteDetail.from_orm(routedetail)
 
-@api_routedetail.delete("/", response_model=bool)
+@api_routedetail.delete("/")
 async def delete_route_detail(route_id:int, vehicle_id: int, driver_id:int):
-    return await RouteDetail.delete_id(route_id, vehicle_id, driver_id)
+    await RouteDetail.get_id(route_id)
+    await RouteDetail.delete_id(route_id, vehicle_id, driver_id)
+    return {"detail": "Delete succesfully"}
+
+@api_routedetail.get("/{id}", response_model=List[schemas.RouteDetail])
+async def get_route_detail(id:int):
+    routedetail = await RouteDetail.get_id(id)
+    if routedetail == []:
+        raise HTTPException(status_code=404, detail="Route not found")
+    return routedetail
 
 api_routedetails = APIRouter(prefix="/routedetails")
 @api_routedetails.get("/",response_model=List[schemas.RouteDetail],summary="Get all route details")
 async def get_routedetails():
     routedetail = await RouteDetail.get_all()
     return routedetail
+
+
+
 
 """ @api_routedetail.get("/join", response_model=List[schemas.RouteDetail])
 async def get_route_detail_by_name_temp(route_name: Optional[str]=None, vehicle_name: Optional[str]=None, driver_name: Optional[str]=None):
