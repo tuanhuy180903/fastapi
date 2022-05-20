@@ -69,10 +69,9 @@ class CoreModel:
         query = select(cls).where(cls.name==name)
         results = await db.execute(query)
         _result = results.scalars().all()
-        print(_result)
-        if _result == []:
+        """ if _result == []:
             name_cls = str(cls)
-            raise HTTPException(status_code=404, detail=f"{name_cls[15:(len(name_cls)-2)]} not found")
+            raise HTTPException(status_code=404, detail=f"{name_cls[15:(len(name_cls)-2)]} not found") """
         return _result
 
 

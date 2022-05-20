@@ -105,6 +105,8 @@ async def create_driver(driver: schemas.Driver):
 @api_driver.get("/", response_model=List[schemas.Driver])
 async def get_driver_by_name(name: str):
     driver = await Driver.filter_by_name(name)
+    if driver == []:
+        raise HTTPException(status_code=404, detail="Driver not found")
     return driver
 
 @api_driver.get("/{id}", response_model=schemas.Driver)
@@ -157,6 +159,8 @@ async def delete_route(id:int):
 @api_route.get("/", response_model=List[schemas.Route])
 async def get_route_by_name(name:str):
     routes = await Route.filter_by_name(name)
+    if routes == []:
+        raise HTTPException(status_code=404, detail="Route not found")
     return routes
 
 api_routes = APIRouter(prefix="/routes")

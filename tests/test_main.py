@@ -58,7 +58,7 @@ async def test_get_fleet_by_name(event_loop):
     assert response.json() == test_data
     
 
-fleet_list = [{"id":6,"name":"string"},{"id":1,"name":"qqq"},{"id":4,"name":"aaa"},]
+fleet_list = [{"id":6,"name":"string"},{"id":1,"name":"qqq"},{"id":4,"name":"aaa"}]
 async def test_get_fleets(event_loop):
     async with AsyncClient(app=app, base_url=base_url) as ac:
         response = await ac.get("/fleets/")
