@@ -46,12 +46,12 @@ class CoreModel:
     async def get(cls, id):
         query = select(cls).where(cls.id==id)
         results = await db.execute(query)
-        _result = results.fetchone()
-        if _result is None:
+        _result = results.scalar()
+        #print(_result)
+        """ if _result is None:
             name_cls = str(cls)
-            raise HTTPException(status_code=404, detail=f"{name_cls[15:(len(name_cls)-2)]} not found")
-        (result,) = _result
-        return result
+            raise HTTPException(status_code=404, detail=f"{name_cls[15:(len(name_cls)-2)]} not found") """
+        return _result
 
     @classmethod
     async def delete(cls, id):
@@ -81,7 +81,8 @@ class Fleet(Base, CoreModel):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True)
     #vehicles = relationship("Vehicle", cascade="delete-orphan", backref="vehicles")
-    vehicle = relationship("Vehicle", back_populates="owner", cascade="delete", passive_deletes=True)
+    #vehicle = relationship("Vehicle", back_populates="owner", cascade="delete", passive_deletes=True)
+    vehicle = relationship("Vehicle", cascade="delete", passive_deletes=True)
     __mapper_args__ = {"eager_defaults": True}
 
     @classmethod
@@ -96,12 +97,13 @@ class Vehicle(Base, CoreModel):
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    owner_id = Column(Integer, ForeignKey("fleets.id", ondelete="CASCADE"))
+    owner_id = Column(Integer, ForeignKey("fleets.id", ondelete="cascade"))
     #owner = relationship("Fleet", backref=backref("fleets", cascade="delete"))
-    owner = relationship("Fleet", back_populates="vehicle")
+    #owner = relationship("Fleet", back_populates="vehicle")
     __mapper_args__ = {"eager_defaults": True}
 
-    route_detail = relationship("RouteDetail", back_populates="vehicle", cascade="all, delete-orphan")
+    #route_detail = relationship("RouteDetail", back_populates="vehicle", cascade="delete-orphan")
+    route_detail = relationship("RouteDetail", cascade = "delete", passive_deletes=True)
 
     @classmethod
     async def filter_both(cls,id, name):
@@ -119,7 +121,8 @@ class Driver(Base, CoreModel):
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    route_detail = relationship("RouteDetail", back_populates="driver", cascade="all, delete-orphan")
+    #route_detail = relationship("RouteDetail", back_populates="driver", cascade="all, delete-orphan")
+    route_detail = relationship("RouteDetail", cascade = "delete", passive_deletes=True)
 
     @classmethod
     async def get_id_by_name(cls, name):
@@ -136,8 +139,9 @@ class Route(Base, CoreModel):
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    route_detail = relationship("RouteDetail", back_populates="route", cascade="all, delete-orphan")
-    
+    #route_detail = relationship("RouteDetail", back_populates="route", cascade="all, delete-orphan")
+    route_detail = relationship("RouteDetail", cascade = "delete", passive_deletes=True)
+
     @classmethod
     async def get_id_by_name(cls, name):
         query = select(cls.id).where(cls.name==name)
