@@ -1,41 +1,45 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Path
 from models import Fleet, Driver, RouteDetail, Vehicle, Route
 from typing import List, Optional
 import schemas
 
 '''Fleet'''
 
-api_fleet = APIRouter(prefix="/fleet")
+api_fleet = APIRouter(prefix="/fleets", tags=["fleet"])
 
-@api_fleet.get("/", response_model=schemas.Fleet, summary="Get a fleet by name")
-async def get_fleet_by_name(name: str):
-    fleet = await Fleet.get_by_name(name)
+@api_fleet.get("/", response_model=List[schemas.Fleet], 
+    summary="Get all fleets or by its name", description="Leave parameters blank to get all")
+async def get_fleet_by_name(name: Optional[str]=None):
+    if not name:
+        return await Fleet.get_all()
+    fleet = await Fleet.filter_by_name(name)
     if fleet is None:
             raise HTTPException(status_code=404, detail=f"Fleet not found")
     return fleet
 
 @api_fleet.get("/{id}", response_model=schemas.Fleet, summary="Get a fleet by ID")
-async def get_fleet(id:int):
+async def get_fleet(id:int = Path(..., gt=0)):
     fleet = await Fleet.get(id)
     if fleet is None:
         raise HTTPException(status_code=404, detail="Fleet not found")
     return schemas.Fleet.from_orm(fleet)
 
 @api_fleet.post("/",response_model=schemas.Fleet, status_code=201, summary="Create a fleet")
-async def create_fleet(fleet: schemas.Fleet):
-    _dict = fleet.dict()
+async def create_fleet(fleet: schemas.FleetBase):
+    '''_dict = fleet.dict()
     fleet_name = await Fleet.get_by_name(_dict["name"])
-    fleet_id = await Fleet.get(_dict["id"])
     if fleet_name:
         raise HTTPException(status_code=409, detail=f"Fleet {_dict['name']} exists")
+    """ fleet_id = await Fleet.get(_dict["id"])
     if fleet_id:
-        raise HTTPException(status_code=409, detail=f"Fleet {_dict['id']} exists")
+        raise HTTPException(status_code=409, detail=f"Fleet {_dict['id']} exists") """
     fleet = await Fleet.create(**_dict)
     #return schemas.Fleet.from_orm(fleet)
-    return fleet
+    return fleet'''
+    return await Fleet.create(**fleet.dict())
 
 @api_fleet.put("/{id}", response_model=schemas.Fleet, summary="Update a fleet")
-async def update_fleet(id:int, fleet: schemas.FleetBase):
+async def update_fleet(fleet: schemas.FleetBase, id:int = Path(..., gt=0),):
     _fleet = await Fleet.get(id)
     if _fleet is None:
         raise HTTPException(status_code=404, detail="Fleet not found")
@@ -47,7 +51,7 @@ async def update_fleet(id:int, fleet: schemas.FleetBase):
     return schemas.Fleet.from_orm(fleet)
 
 @api_fleet.delete("/{id}", summary="Delete a fleet")
-async def delete_fleet(id:int):
+async def delete_fleet(id:int = Path(..., gt=0)):
     fleet = await Fleet.get(id)
     if fleet is None:
         raise HTTPException(status_code=404, detail="Fleet not found")
@@ -62,13 +66,15 @@ async def get_fleets():
 
 '''Vehicle'''
 
-api_vehicle = APIRouter(prefix="/vehicle")
+api_vehicle = APIRouter(prefix="/vehicles",tags=["vehicle"])
 
 
-@api_vehicle.get("/", response_model=List[schemas.Vehicle], summary="Get vehicles by name or by fleet's id")
+@api_vehicle.get("/", response_model=List[schemas.Vehicle], 
+    summary="Get all vehicles or by their name or by fleet's id",
+    description="Leave parameters blank to get all")
 async def get_vehicle(owner_id: Optional[int]=None, name:Optional[str]=None):
     if not (owner_id or name):
-        return []
+        return await Vehicle.get_all()
 
     result = await Vehicle.filter_both(owner_id, name)
     if result == []:
@@ -76,7 +82,7 @@ async def get_vehicle(owner_id: Optional[int]=None, name:Optional[str]=None):
     return result
 
 @api_vehicle.get("/{id}", response_model=schemas.Vehicle, summary="Get a vehicle by ID")
-async def get_vehicle_id(id:int):
+async def get_vehicle_id(id:int = Path(..., gt=0)):
     vehicle = await Vehicle.get(id)
     if vehicle is None:
         raise HTTPException(status_code=404, detail="Vehicle not found")
@@ -84,19 +90,19 @@ async def get_vehicle_id(id:int):
     return vehicle
 
 @api_vehicle.post("/",response_model=schemas.Vehicle,status_code=201, summary="Create a vehicle")
-async def create_vehicle(vehicle: schemas.Vehicle):
+async def create_vehicle(vehicle: schemas.VehicleBase):
     _dict = vehicle.dict()
     result = await Fleet.get(_dict['owner_id'])
     if result is None:
         raise HTTPException(status_code=404, detail=f"Fleet not found")
-    _id = await Vehicle.get(_dict["id"])
+    """ _id = await Vehicle.get(_dict["id"])
     if _id:
-        raise HTTPException(status_code=409, detail=f"Vehicle {_dict['id']} exists")    
+        raise HTTPException(status_code=409, detail=f"Vehicle {_dict['id']} exists")    """ 
     vehicle = await Vehicle.create(**_dict)
     return vehicle
 
 @api_vehicle.put("/{id}", response_model=schemas.Vehicle, summary="Update a vehicle")
-async def update_vehicle(id:int, vehicle: schemas.VehicleBase):
+async def update_vehicle(vehicle: schemas.VehicleBase, id:int = Path(..., gt=0),):
     _vehicle = await Vehicle.get(id)
     if _vehicle is None:
         raise HTTPException(status_code=404, detail="Vehicle not found")
@@ -104,7 +110,7 @@ async def update_vehicle(id:int, vehicle: schemas.VehicleBase):
     return schemas.Vehicle.from_orm(vehicle)
 
 @api_vehicle.delete("/{id}", summary="Delete a vehicle")
-async def delete_vehicle(id:int):
+async def delete_vehicle(id:int = Path(..., gt=0)):
     vehicle = await Vehicle.get(id)
     if vehicle is None:
         raise HTTPException(status_code=404, detail="Vehicle not found")
@@ -120,33 +126,36 @@ async def get_vehicles():
 
 '''Driver'''
 
-api_driver = APIRouter(prefix="/driver")
+api_driver = APIRouter(prefix="/drivers",tags=["driver"])
 
 @api_driver.post("/",response_model=schemas.Driver, status_code=201, summary="Create a driver")
-async def create_driver(driver: schemas.Driver):
+async def create_driver(driver: schemas.DriverBase):
     _dict = driver.dict()
-    _id = await Driver.get(_dict["id"])
+    """ _id = await Driver.get(_dict["id"])
     if _id:
-        raise HTTPException(status_code=409, detail=f"Driver {_dict['id']} exists")    
+        raise HTTPException(status_code=409, detail=f"Driver {_dict['id']} exists")    """ 
     driver = await Driver.create(**_dict)
     return driver
 
-@api_driver.get("/", response_model=List[schemas.Driver], summary="Get drivers by name")
-async def get_driver_by_name(name: str):
+@api_driver.get("/", response_model=List[schemas.Driver], 
+    summary="Get all drivers or by their name", description="Leave parameters blank to get all")
+async def get_driver_by_name(name: Optional[str]=None):
+    if not name:
+        return await Driver.get_all()
     driver = await Driver.filter_by_name(name)
     if driver == []:
         raise HTTPException(status_code=404, detail="Driver not found")
     return driver
 
 @api_driver.get("/{id}", response_model=schemas.Driver, summary="Get a driver by ID")
-async def get_driver(id:int):
+async def get_driver(id:int = Path(..., gt=0)):
     driver = await Driver.get(id)
     if driver is None:
         raise HTTPException(status_code=404, detail="Driver not found")
     return schemas.Driver.from_orm(driver)
 
 @api_driver.put("/{id}", response_model=schemas.Driver, summary="Update a driver")
-async def update_driver(id:int, driver: schemas.DriverBase):
+async def update_driver(driver: schemas.DriverBase, id:int = Path(..., gt=0),):
     _driver = await Driver.get(id)
     if _driver is None:
         raise HTTPException(status_code=404, detail="Driver not found")
@@ -154,7 +163,7 @@ async def update_driver(id:int, driver: schemas.DriverBase):
     return schemas.Driver.from_orm(driver)
 
 @api_driver.delete("/{id}", summary="Delete a driver")
-async def delete_driver(id:int):
+async def delete_driver(id:int = Path(..., gt=0)):
     driver = await Driver.get(id)
     if driver is None:
         raise HTTPException(status_code=404, detail="Driver not found")
@@ -169,26 +178,26 @@ async def get_drivers():
 
 '''Route'''
 
-api_route = APIRouter(prefix="/route")
+api_route = APIRouter(prefix="/routes",tags=["route"])
 
 @api_route.post("/",response_model=schemas.Route, status_code=201, summary="Create a route")
-async def create_route(route: schemas.Route):
+async def create_route(route: schemas.RouteBase):
     _dict = route.dict()
-    _id = await Route.get(_dict["id"])
+    """ _id = await Route.get(_dict["id"])
     if _id:
-        raise HTTPException(status_code=409, detail=f"Route {_dict['id']} exists")    
+        raise HTTPException(status_code=409, detail=f"Route {_dict['id']} exists")   """  
     route = await Route.create(**_dict)
     return route
 
 @api_route.get("/{id}", response_model=schemas.Route, summary="Get a route by ID")
-async def get_route(id:int):
+async def get_route(id:int = Path(..., gt=0)):
     route = await Route.get(id)
     if route is None:
         raise HTTPException(status_code=404, detail="Route not found")
     return schemas.Route.from_orm(route)
 
 @api_route.put("/{id}", response_model=schemas.Route, summary="Update a route")
-async def update_route(id:int, route: schemas.RouteBase):
+async def update_route(route: schemas.RouteBase, id:int = Path(..., gt=0),):
     _route = await Route.get(id)
     if _route is None:
         raise HTTPException(status_code=404, detail="Route not found")
@@ -196,15 +205,18 @@ async def update_route(id:int, route: schemas.RouteBase):
     return schemas.Route.from_orm(route)
 
 @api_route.delete("/{id}", summary="Delete a route")
-async def delete_route(id:int):
+async def delete_route(id:int = Path(..., gt=0)):
     route = await Route.get(id)
     if route is None:
         raise HTTPException(status_code=404, detail="Route not found")
     await Route.delete(id)
     return {"detail": "Delete succesfully"}
 
-@api_route.get("/", response_model=List[schemas.Route], summary="Get routes by name")
-async def get_route_by_name(name:str):
+@api_route.get("/", response_model=List[schemas.Route], 
+    summary="Get all routes or by their name", description="Leave parameters blank to get all")
+async def get_route_by_name(name:Optional[str]=None):
+    if not name:
+        return await Route.get_all()
     routes = await Route.filter_by_name(name)
     if routes == []:
         raise HTTPException(status_code=404, detail="Route not found")
@@ -218,12 +230,14 @@ async def get_routes():
 
 '''RouteDetail'''
 
-api_routedetail = APIRouter(prefix="/routedetail")
+api_routedetail = APIRouter(prefix="/routedetail",tags=["routedetail"])
 
-@api_routedetail.get("/", response_model=List[schemas.RouteDetail], summary="Get a route detail by route's name, vehicle's name or driver's name")
+@api_routedetail.get("/", response_model=List[schemas.RouteDetail], 
+    summary="Get all route details or by route's name, vehicle's name or driver's name", 
+    description="Leave parameters blank to get all")
 async def get_route_detail_by_name(route_name: Optional[str]=None, vehicle_name: Optional[str]=None, driver_name: Optional[str]=None):
     if not (route_name or vehicle_name or driver_name):
-        return []
+        return await RouteDetail.get_all()
     result = await RouteDetail.get_by_name(route_name, vehicle_name, driver_name)
     return result
 
@@ -241,7 +255,7 @@ async def delete_route_detail(route_id:int, vehicle_id: int, driver_id:int):
     return {"detail": "Delete succesfully"}
 
 @api_routedetail.get("/{id}", response_model=List[schemas.RouteDetail], summary="Get route details by ID")
-async def get_route_detail(id:int):
+async def get_route_detail(id:int = Path(..., gt=0)):
     routedetail = await RouteDetail.get_id(id)
     if routedetail == []:
         raise HTTPException(status_code=404, detail="Route not found")

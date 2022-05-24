@@ -25,6 +25,13 @@ fleet_url = "/fleet/"
     def mock_post(**kwargs):
         return test_data
 
+    nguyen.tin1
+    phuc.mai
+    nguyen.hoang2
+    nguyen.khoa
+    tan.mai
+    thang.tran1
+
     monkeypatch.setattr(CoreModel, "create", mock_post)
 
     response = test_app.post("/fleet/", data=json.dumps(test_data),)

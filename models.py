@@ -85,12 +85,12 @@ class Fleet(Base, CoreModel):
     vehicle = relationship("Vehicle", cascade="delete", passive_deletes=True)
     __mapper_args__ = {"eager_defaults": True}
 
-    @classmethod
+    """ @classmethod
     async def get_by_name(cls, name):
         query = select(cls).where(cls.name==name)
         results = await db.execute(query)
-        _result = results.scalar()
-        return _result
+        _result = results.scalars().all()
+        return _result """
 
 class Vehicle(Base, CoreModel):
     __tablename__ = "vehicles"

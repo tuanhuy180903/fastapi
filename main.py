@@ -18,8 +18,7 @@ def home():
     return {"Data": "Hello!"}
 
 from views import *
-apis = [api_fleets, api_fleet, api_vehicles, api_vehicle, api_drivers, api_driver, 
-api_routes, api_route, api_routedetails, api_routedetail]
+apis = [api_fleet, api_vehicle, api_driver, api_route, api_routedetail]
 
 for api in apis:
     app.include_router(api)
